@@ -136,7 +136,7 @@ BOOL CameraBase::SetParamInt(GBParamID Param, int nReturnVal)
 }
 
 //得到通用参数
-BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
+BOOL CameraBase::GetParamInt(GBParamID Param, INT_PTR& nReturnVal)
 {
     switch (Param)
     {
@@ -153,7 +153,7 @@ BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
         nReturnVal = m_nWidth * m_nHeight * m_nImageByteCount;
         break;
     case GBImageBufferAddr:
-        nReturnVal = (int)m_pImgRGBBuffer;
+        nReturnVal = (INT_PTR)m_pImgRGBBuffer;
         break;
     default:
         AfxMessageBox("GetParamInt switch(Param)  default:...");
@@ -684,8 +684,11 @@ void CameraBase::InitParamFromINI()
     {
         m_nMaxWidth = GetPrivateProfileInt("Camera", "Width", 0, m_sInitFile);
         m_nMaxHeight = GetPrivateProfileInt("Camera", "Height", 0, m_sInitFile);
-        m_nWidth = GetPrivateProfileInt("Camera", "CarveWidth", 0, m_sInitFile);
-        m_nHeight = GetPrivateProfileInt("Camera", "CarveHeight", 0, m_sInitFile);
+//         m_nWidth = GetPrivateProfileInt("Camera", "CarveWidth", 0, m_sInitFile);
+//         m_nHeight = GetPrivateProfileInt("Camera", "CarveHeight", 0, m_sInitFile);
+        m_nWidth = m_nMaxWidth;
+        m_nHeight = m_nMaxHeight;
+
         m_nOffsetX = GetPrivateProfileInt("Camera", "OffsetX", 0, m_sInitFile);
         m_nOffsetY = GetPrivateProfileInt("Camera", "OffsetY", 0, m_sInitFile);
         m_nExposureMode = GetPrivateProfileInt("Camera", "ExposureMode", 0, m_sInitFile);

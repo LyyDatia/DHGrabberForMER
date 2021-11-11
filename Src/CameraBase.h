@@ -119,7 +119,7 @@ public:
 	//设置通用参数
 	BOOL SetParamInt(GBParamID Param, int nReturnVal);	
 	//得到通用参数
-	BOOL GetParamInt(GBParamID Param, int &nReturnVal);	
+	BOOL GetParamInt(GBParamID Param, INT_PTR &nReturnVal);	//[2021-11-10]:int变INT_PTR
 	//调用参数对话框
 	void CallParamDialog();
 	// 获得错误信息

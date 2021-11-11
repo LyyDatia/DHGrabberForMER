@@ -66,7 +66,7 @@ BOOL CDHGrabberMER::Snapshot()
 }
 	
 //得到参数
-BOOL CDHGrabberMER::GetParamInt(GBParamID Param, int &nOutputVal)
+BOOL CDHGrabberMER::GetParamInt(GBParamID Param, INT_PTR &nOutputVal)
 {
 	ASSERT(m_pGrabber != NULL);
 	return(m_pGrabber->GetParamInt(Param, nOutputVal));

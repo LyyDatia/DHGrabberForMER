@@ -119,7 +119,7 @@ public:
 	virtual BOOL SetParamInt(GBParamID Param, int nInputVal) = 0;
 	
 	//得到参数
-	virtual BOOL GetParamInt(GBParamID Param, int &nOutputVal) = 0;
+	virtual BOOL GetParamInt(GBParamID Param, INT_PTR &nOutputVal) = 0;
 	
 	//调用参数对话框
 	virtual void CallParamDialog() = 0;
@@ -180,7 +180,7 @@ public:
 	BOOL SetParamInt(GBParamID Param, int nInputVal);
 	
 	//得到参数
-	BOOL GetParamInt(GBParamID Param, int &nOutputVal);
+	BOOL GetParamInt(GBParamID Param, INT_PTR &nOutputVal);
 	
 	//调用参数对话框
 	void CallParamDialog();
