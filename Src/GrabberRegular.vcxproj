@@ -70,9 +70,6 @@
     <IntDir>..\build\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <TargetName>DHGrabberForMER</TargetName>
-    <IncludePath>..\Inc;$(IncludePath);C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\atlmfc\include</IncludePath>
-    <ReferencePath>..\Lib;$(ReferencePath)</ReferencePath>
-    <LibraryPath>..\Lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\$(Platform)\$(Configuration)\</OutDir>
@@ -132,11 +129,9 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <LinkDLL>true</LinkDLL>
       <SubSystem>Windows</SubSystem>
-      <OutputFile>$(OutDir)\$(TargetName).dll</OutputFile>
       <ModuleDefinitionFile>.\GrabberRegular.def</ModuleDefinitionFile>
       <AdditionalDependencies>GxIAPI.lib;DxImageProc.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\Lib\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /i /e /y $(OutDir)$(TargetName).dll $(ProjectDir)..\OutPut\$(Platform)\$(Configuration)\
@@ -150,10 +145,10 @@ xcopy /i /e /y $(ProjectDir)DHGrabberForMer.h $(ProjectDir)..\OutPut\$(Platform)
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_WINDLL;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_WINDLL;_USRDLL;DHGrabberMER_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>..\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -176,7 +171,6 @@ xcopy /i /e /y $(ProjectDir)DHGrabberForMer.h $(ProjectDir)..\OutPut\$(Platform)
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <LinkDLL>true</LinkDLL>
       <SubSystem>Windows</SubSystem>
-      <OutputFile>$(OutDir)\$(TargetName).dll</OutputFile>
       <ImportLibrary>
       </ImportLibrary>
       <ModuleDefinitionFile>.\GrabberRegular.def</ModuleDefinitionFile>
@@ -254,7 +248,7 @@ xcopy /i /e /y $(ProjectDir)DHGrabberForMer.h $(ProjectDir)..\OutPut\$(Platform)
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>../Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_WINDLL;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_WINDLL;_USRDLL;DHGrabberMER_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BrowseInformation>true</BrowseInformation>
       <PrecompiledHeaderOutputFile>.\Debug\GrabberRegular.pch</PrecompiledHeaderOutputFile>
       <PrecompiledHeader>Use</PrecompiledHeader>

@@ -63,8 +63,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,4
- PRODUCTVERSION 1,0,0,4
+ FILEVERSION 1,0,0,5
+ PRODUCTVERSION 1,0,0,5
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -79,13 +79,13 @@ BEGIN
     BEGIN
         BLOCK "080404b0"
         BEGIN
-            VALUE "FileDescription", "GrabberRegular DLL,Add Setting Support of inner tailor Image offset, size."
-            VALUE "FileVersion", "1.0.0.4"
+            VALUE "FileDescription", "MER大恒水星相机封装库"
+            VALUE "FileVersion", "1.0.0.5"
             VALUE "InternalName", "GrabberRegular"
-            VALUE "LegalCopyright", "版权所有 (C) 2013"
+            VALUE "LegalCopyright", "版权所有 (C) 2013-2022"
             VALUE "OriginalFilename", "GrabberRegular.DLL"
             VALUE "ProductName", "GrabberRegular Dynamic Link Library"
-            VALUE "ProductVersion", "1.0.0.4"
+            VALUE "ProductVersion", "1.0.0.5"
         END
     END
     BLOCK "VarFileInfo"

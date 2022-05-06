@@ -10,10 +10,6 @@
 #include "stdafx.h"
 #include "CameraBase.h"
 
-#include <fstream>;
-using namespace std;
-
-//#define MERLOG
 
 CameraBase::CameraBase()
 {
@@ -67,6 +63,7 @@ CameraBase::CameraBase()
 
 CameraBase::~CameraBase()
 {
+    Close();
     if (m_chBmpBuf != NULL)
     {
         delete[]m_chBmpBuf;
@@ -136,7 +133,7 @@ BOOL CameraBase::SetParamInt(GBParamID Param, int nReturnVal)
 }
 
 //得到通用参数
-BOOL CameraBase::GetParamInt(GBParamID Param, INT_PTR& nReturnVal)
+BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
 {
     switch (Param)
     {
@@ -153,8 +150,33 @@ BOOL CameraBase::GetParamInt(GBParamID Param, INT_PTR& nReturnVal)
         nReturnVal = m_nWidth * m_nHeight * m_nImageByteCount;
         break;
     case GBImageBufferAddr:
-        nReturnVal = (INT_PTR)m_pImgRGBBuffer;
+#ifndef _WIN64
+		nReturnVal = ((int)m_pImgRGBBuffer) & 0xFFFFFFFF;
+#else
+		nReturnVal = ((__int64)m_pImgRGBBuffer) & 0xFFFFFFFF;
+#endif
         break;
+	case GBImageBufferAddr2:
+		{
+			nReturnVal = ((__int64)m_pImgRGBBuffer) >> 32;
+		}
+        break;
+	case GBImageMaxWidth:
+		{
+			nReturnVal = m_nMax_Width;
+		}
+		break;
+	case GBImageMaxHeight:
+		{
+			nReturnVal = m_nMax_Height;
+		}
+		break;
+	case GBImageOffsetX:
+		nReturnVal = m_nOffsetX;
+		break;
+	case GBImageOffsetY:
+		nReturnVal = m_nOffsetY;
+		break;
     default:
         AfxMessageBox("GetParamInt switch(Param)  default:...");
         m_LastErrorInfo.nErrorCode = DCErrorGetParam;
@@ -189,6 +211,9 @@ void CameraBase::CallParamDialog()
 // 获得错误信息
 void CameraBase::GetLastErrorInfo(s_GBERRORINFO* pErrorInfo)
 {
+	pErrorInfo->nErrorCode = m_LastErrorInfo.nErrorCode;
+	sprintf(pErrorInfo->strErrorRemark, m_LastErrorInfo.strErrorRemark);
+	sprintf(pErrorInfo->strErrorDescription, m_LastErrorInfo.strErrorDescription);
 }
 
 BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2, int nInputVal3, int nInputVal4, int nInputVal5, void* sInputVal6)
@@ -200,19 +225,6 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
         bRet = true;
     }
     BOOL bReturn = TRUE;
-    //test
-
-    fstream ofs;
-    string strOut = "";
-    GX_STATUS ret = GX_STATUS_ERROR;
-
-    int maxheight, maxwidth, t2, t3;
-    maxheight = maxwidth = t2 = t3 = -1;;
-    MERGetParamInt(MERImageMaxHeight, maxheight, t2, t3);
-    MERGetParamInt(MERImageMaxWidth, maxwidth, t2, t3);
-#ifdef MERLOG
-    ofs.open("MERlog.txt", ios::out | ios::app);
-#endif
     switch (Param)
     {
     case MERSnapMode:
@@ -279,94 +291,171 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
             bReturn = FALSE;
         }
         break;
-    case MERImageOffsetHoriz:
-        strOut = "MERImageOffsetHoriz";
-        if (nInputVal1 > maxwidth)
-        {
-            bReturn = FALSE;
-            break;
-        }
-        if ((ret = SetInt(GX_INT_OFFSET_X, nInputVal1)) == GX_STATUS_SUCCESS)
-        {
-            m_nOffsetX = nInputVal1;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERImageOffsetVerti:
-        strOut = "MERImageOffsetVerti";
-        if (nInputVal1 > maxheight)
-        {
-            bReturn = FALSE;
-            break;
-        }
-        if ((ret = SetInt(GX_INT_OFFSET_Y, nInputVal1)) == GX_STATUS_SUCCESS)
-        {
-            m_nOffsetY = nInputVal1;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERCarveImageWidth:
-        strOut = "MERCarveImageWidth";
-        if (nInputVal1 > maxwidth)
-        {
-            bReturn = FALSE;
-            break;
-        }
-        if ((ret = SetInt(GX_INT_WIDTH, nInputVal1)) == GX_STATUS_SUCCESS)
-        {
-            m_nWidth = nInputVal1;
-            //m_nImageWidth = nInputVal1;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERCarveImageHeight:
-        strOut = "MERCarveImageHeight";
-        if (nInputVal1 > maxwidth)
-        {
-            bReturn = FALSE;
-            break;
-        }
-        if ((ret = SetInt(GX_INT_HEIGHT, nInputVal1)) == GX_STATUS_SUCCESS)
-        {
-            m_nHeight = nInputVal1;
-           // m_nImageHeight = nInputVal1;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    }
-    if (ofs.is_open())
-    {
-        if (strOut != "")
-        {
-            ofs << "set " << strOut << " MaxH:" << maxheight << " MaxW:" << maxwidth << " Value:" << nInputVal1;
-            if (bReturn)
-            {
-                ofs << " Success" << endl;
-            }
-            else
-            {
-                ofs << " Failed ret:" << (int)ret << endl;
-            }
-        }
-        ofs.close();
+	case MER_INT_WIDTH:
+		{
+			__UnPrepareForShowImg();
+			int tmpWidth = nInputVal1 / 16 * 16 ;
+			if(SetInt(GX_INT_WIDTH,tmpWidth) == GX_STATUS_SUCCESS)
+			{
+				m_nWidth = tmpWidth;
+			}
+			else
+			{
+				bReturn = FALSE;
+			}
+			__PrepareForShowImg();
+		}	
+		break;
+	case MER_INT_HEIGHT:
+		{
+			__UnPrepareForShowImg();
+			int tmpHeight= nInputVal1 / 2 * 2 ;
+			if(SetInt(GX_INT_HEIGHT,tmpHeight) == GX_STATUS_SUCCESS)
+			{
+				m_nHeight = tmpHeight;
+			}
+			else
+			{
+				bReturn = FALSE;
+			}
+			__PrepareForShowImg();
+		}
+		break;
+	case MER_INT_OFFSETX:
+		{
+			int tmpOffsetX = nInputVal1 / 16 * 16 ;
+			if(SetInt(GX_INT_OFFSET_X,tmpOffsetX) == GX_STATUS_SUCCESS)
+			{
+				m_nOffsetX = tmpOffsetX;
+			}
+			else
+			{
+				bReturn = FALSE;
+			}
+		}
+		break;
+	case MER_INT_OFFSETY:
+		{
+			int tmpOffetY= nInputVal1 / 2 * 2 ;
+			if(SetInt(GX_INT_OFFSET_Y,tmpOffetY) == GX_STATUS_SUCCESS)
+			{
+				m_nOffsetY = tmpOffetY;
+			}
+			else
+			{
+				bReturn = FALSE;
+			}
+		}
+		break;
     }
     if (bRet)
     {
         StartGrab();
     }
     return bReturn;
+}
+
+BOOL CameraBase::MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight)
+{
+	bool bRet = false;
+	if (m_bIsSnaping)
+	{
+		StopGrab();
+		bRet = true;
+	}
+	BOOL bReturn = TRUE;
+	__UnPrepareForShowImg();
+	if(nwidth < m_nWidth)
+	{
+		int tmpWidth = nwidth / 16 * 16 ;
+		if(SetInt(GX_INT_WIDTH,tmpWidth) == GX_STATUS_SUCCESS)
+		{
+			m_nWidth = tmpWidth;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+		int tmpOffsetX = noffsetX / 16 * 16 ;
+		if(SetInt(GX_INT_OFFSET_X,tmpOffsetX) == GX_STATUS_SUCCESS)
+		{
+			m_nOffsetX = tmpOffsetX;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+	}
+	else
+	{
+		int tmpOffsetX = noffsetX / 16 * 16 ;
+		if(SetInt(GX_INT_OFFSET_X,tmpOffsetX) == GX_STATUS_SUCCESS)
+		{
+			m_nOffsetX = tmpOffsetX;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+		int tmpWidth = nwidth / 16 * 16 ;
+		if(SetInt(GX_INT_WIDTH,tmpWidth) == GX_STATUS_SUCCESS)
+		{
+			m_nWidth = tmpWidth;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+	}
+
+	if (nheight < m_nHeight)
+	{
+		int tmpHeight= nheight / 2 * 2 ;
+		if(SetInt(GX_INT_HEIGHT,tmpHeight) == GX_STATUS_SUCCESS)
+		{
+			m_nHeight = tmpHeight;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+		int tmpOffetY= noffsetY / 2 * 2 ;
+		if(SetInt(GX_INT_OFFSET_Y,tmpOffetY) == GX_STATUS_SUCCESS)
+		{
+			m_nOffsetY = tmpOffetY;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+	}
+	else
+	{
+		int tmpOffetY= noffsetY / 2 * 2 ;
+		if(SetInt(GX_INT_OFFSET_Y,tmpOffetY) == GX_STATUS_SUCCESS)
+		{
+			m_nOffsetY = tmpOffetY;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+		int tmpHeight= nheight / 2 * 2 ;
+		if(SetInt(GX_INT_HEIGHT,tmpHeight) == GX_STATUS_SUCCESS)
+		{
+			m_nHeight = tmpHeight;
+		}
+		else
+		{
+			bReturn = FALSE;
+		}
+	}
+	__PrepareForShowImg();
+	if (bRet)
+	{
+		StartGrab();
+	}
+	return bReturn;
 }
 
 //得到相机专有参数
@@ -417,94 +506,10 @@ BOOL CameraBase::MERGetParamInt(MERParamID Param, int& nReturnVal1, int& nReturn
             bReturn = FALSE;
         }
         break;
-    case MERImageOffsetHoriz:
-        if (GetInt(GX_INT_OFFSET_X, &ntemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = ntemp;
-            if (ntemp != m_nOffsetX)
-            {
-                m_nOffsetX = ntemp;
-            }
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERImageOffsetVerti:
-        if (GetInt(GX_INT_OFFSET_Y, &ntemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = ntemp;
-            if (ntemp != m_nOffsetY)
-            {
-                m_nOffsetY = ntemp;
-            }
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERCarveImageWidth:
-        if (GetInt(GX_INT_WIDTH, &ntemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = ntemp;
-            if (ntemp != m_nWidth)
-            {
-                m_nWidth = ntemp;
-            }
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERCarveImageHeight:
-        if (GetInt(GX_INT_HEIGHT, &ntemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = ntemp;
-            if (ntemp != m_nHeight)
-            {
-                m_nHeight = ntemp;
-            }
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
     case MERExposurTimeMin:
         if (GetFloat(GX_FLOAT_AUTO_EXPOSURE_TIME_MIN, &dtemp) == GX_STATUS_SUCCESS)
         {
             nReturnVal1 = dtemp;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERImageMaxWidth:
-        if (GetInt(GX_INT_WIDTH_MAX, &ntemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = ntemp;
-            if (ntemp != m_nMaxWidth)
-            {
-                m_nMaxWidth = ntemp;
-            }
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERImageMaxHeight:
-        if (GetInt(GX_INT_HEIGHT_MAX, &ntemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = ntemp;
-            if (ntemp != m_nMaxHeight)
-            {
-                m_nMaxHeight = ntemp;
-            }
         }
         else
         {
@@ -645,12 +650,6 @@ GX_STATUS CameraBase::Open(const s_DC_INITSTRUCT* pInitParam)
         }
         else
         {
-            ////设备初始化时 恢复原始视野
-            //MERSetParamInt(MERImageOffsetHoriz, 0);
-            //MERSetParamInt(MERImageOffsetVerti, 0);
-            //MERSetParamInt(MERCarveImageWidth, m_nMaxWidth);
-            //MERSetParamInt(MERCarveImageHeight, m_nMaxHeight);
-
             m_LastErrorInfo.nErrorCode = DCErrorInit;
             sprintf(m_LastErrorInfo.strErrorDescription, "相机已经初始化成功!");
             sprintf(m_LastErrorInfo.strErrorRemark, "相机重复初始化");
@@ -671,24 +670,12 @@ GX_STATUS CameraBase::Open(const s_DC_INITSTRUCT* pInitParam)
 //读取配置文件
 void CameraBase::InitParamFromINI()
 {
-#ifdef MERLOG
-    fstream ofs;
-    ofs.open("MERlog.txt", ios::out | ios::app);
-    if (ofs.is_open())
-    {
-        ofs << "DHGrabberForMER Init from INI" << endl;
-        ofs.close();
-    }
-#endif
     try
     {
-        m_nMaxWidth = GetPrivateProfileInt("Camera", "Width", 0, m_sInitFile);
-        m_nMaxHeight = GetPrivateProfileInt("Camera", "Height", 0, m_sInitFile);
-//         m_nWidth = GetPrivateProfileInt("Camera", "CarveWidth", 0, m_sInitFile);
-//         m_nHeight = GetPrivateProfileInt("Camera", "CarveHeight", 0, m_sInitFile);
-        m_nWidth = m_nMaxWidth;
-        m_nHeight = m_nMaxHeight;
-
+        m_nMax_Width = GetPrivateProfileInt("Camera", "Width", 0, m_sInitFile);
+        m_nMax_Height = GetPrivateProfileInt("Camera", "Height", 0, m_sInitFile);
+        m_nWidth = GetPrivateProfileInt("Camera", "CarveWidth", 0, m_sInitFile);
+        m_nHeight = GetPrivateProfileInt("Camera", "CarveHeight", 0, m_sInitFile);
         m_nOffsetX = GetPrivateProfileInt("Camera", "OffsetX", 0, m_sInitFile);
         m_nOffsetY = GetPrivateProfileInt("Camera", "OffsetY", 0, m_sInitFile);
         m_nExposureMode = GetPrivateProfileInt("Camera", "ExposureMode", 0, m_sInitFile);
@@ -715,19 +702,10 @@ void CameraBase::InitParamFromINI()
 //保存相机设置信息
 void CameraBase::SaveParamToINI()
 {
-#ifdef MERLOG
-    fstream ofs;
-    ofs.open("MERlog.txt", ios::out | ios::app);
-    if (ofs.is_open())
-    {
-        ofs << "DHGrabberForMER Save To INI" << endl;
-        ofs.close();
-    }
-#endif
     CString str;
-    str.Format("%d", m_nMaxWidth);
+    str.Format("%d", m_nMax_Width);
     WritePrivateProfileString("Camera", "Width", str, m_sInitFile);
-    str.Format("%d", m_nMaxHeight);
+    str.Format("%d", m_nMax_Height);
     WritePrivateProfileString("Camera", "Height", str, m_sInitFile);
     str.Format("%d", m_nWidth);
     WritePrivateProfileString("Camera", "CarveWidth", str, m_sInitFile);
@@ -767,16 +745,13 @@ void CameraBase::SetInitParam()
 {
     //设置感兴趣区域
     GX_STATUS status = GX_STATUS_SUCCESS;
-    if (m_nWidth == 0 || m_nHeight == 0)
-    {
-        status = GetInt(GX_INT_WIDTH_MAX, &m_nMaxWidth);
-        status = GetInt(GX_INT_HEIGHT_MAX, &m_nMaxHeight);
-    }
     status = SetInt(GX_INT_WIDTH, m_nWidth);
     status = SetInt(GX_INT_HEIGHT, m_nHeight);
     status = SetInt(GX_INT_OFFSET_X, m_nOffsetX);
     status = SetInt(GX_INT_OFFSET_Y, m_nOffsetY);
 
+	status = SetBool(GX_BOOL_REVERSE_X, false);
+	status = SetBool(GX_BOOL_REVERSE_Y, true);
 
     status = SetEnum(GX_ENUM_ACQUISITION_MODE, GX_ACQ_MODE_CONTINUOUS);
     status = SetEnum(GX_ENUM_GAIN_AUTO, GX_GAIN_AUTO_CONTINUOUS);
@@ -900,8 +875,8 @@ void CameraBase::SetInitParam()
     //设置输出源为闪光灯
     status = SetEnum(GX_ENUM_LINE_SOURCE, GX_ENUM_LINE_SOURCE_STROBE);
 
-
-
+	status = GetInt(GX_INT_WIDTH_MAX,&m_nMax_Width);
+	status = GetInt(GX_INT_HEIGHT_MAX,&m_nMax_Height);
 }
 
 //----------------------------------------------------------------------------------
@@ -1989,23 +1964,13 @@ void __stdcall CameraBase::__OnFrameCallbackFun(GX_FRAME_CALLBACK_PARAM* pFrame)
         try
         {
             //首先将回调中输出的图像数据，处理成RGB数据，以备后面的显示和存储
-#ifdef MERLOG
-            fstream ofs;
-            ofs.open("MERlog.txt", ios::out | ios::app);
-            if (ofs.is_open())
-            {
-                ofs << "DHGrabberForMER Callback Width:" << pFrame->nWidth << " Height:" << pFrame->nHeight
-                    << " PixSize:" << pFrame->nImgSize << endl;
-                ofs.close();
-            }
-#endif
             //check image save area and may renew save area
-            if (pCamera->m_nImageWidth != pFrame->nWidth || pCamera->m_nImageHeight != pFrame->nHeight)
+           /* if (pCamera->m_nImageWidth != pFrame->nWidth || pCamera->m_nImageHeight != pFrame->nHeight)
             {
                 pCamera->m_nImageWidth = pFrame->nWidth;
                 pCamera->m_nImageHeight = pFrame->nHeight;
                 pCamera->__PrepareImgSaveArea();
-            }
+            }*/
 
             if (pCamera->m_nImageByteCount == 3)
             {
@@ -2071,7 +2036,7 @@ GX_STATUS CameraBase::__PrepareImgSaveArea()
     }
 
     //为存储RGB数据开辟空间
-    m_pImgRGBBuffer = new BYTE[size_t(m_nImageWidth * m_nImageHeight * m_nImageByteCount)];
+    m_pImgRGBBuffer = new BYTE[size_t(m_nImageWidth * m_nImageHeight * 3)];
     if (m_pImgRGBBuffer == NULL)
     {
         if (m_pImgRaw8Buffer != NULL)
