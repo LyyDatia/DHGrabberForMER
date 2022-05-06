@@ -79,7 +79,7 @@ BEGIN
     BEGIN
         BLOCK "080404b0"
         BEGIN
-            VALUE "FileDescription", "MER大恒水星相机封装库"
+            VALUE "FileDescription", "MER大恒水星相机封装库-G"
             VALUE "FileVersion", "1.0.0.5"
             VALUE "InternalName", "GrabberRegular"
             VALUE "LegalCopyright", "版权所有 (C) 2013-2022"
