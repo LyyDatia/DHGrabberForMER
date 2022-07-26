@@ -186,12 +186,12 @@ BOOL CDHGrabberMER::MERGetCameraCount(int &nCameraCount)
 {
 	int nCount;
 	bool bRet;
-	bRet = ((CameraBase *)m_pGrabber)->GetCameraCount(nCount);
+	bRet = CameraBase::GetCameraCount(nCount);
 	nCameraCount = nCount;
 	return bRet;
 }
 
 BOOL CDHGrabberMER::MerGetCameraSN(int nCameraNumber,char sCameraSN[MaxSNLen])
 {
-	return ((CameraBase *)m_pGrabber)->GetCameraSN(nCameraNumber,sCameraSN);
+	return CameraBase::GetCameraSN(nCameraNumber, sCameraSN);
 }

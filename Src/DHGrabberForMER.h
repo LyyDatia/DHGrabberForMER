@@ -88,14 +88,14 @@ public:
     int  MERSetOutputParamInt(int nOutputPort,int nOutputVal);//设置相机自定义输出内容 
     //返回值 0:成功 1:不支持自定义信号 2:设置自定义信号失败 3:打开端口失败 4:写输出值失败 
     //获取相机个数
-    BOOL MERGetCameraCount(int &nCameraCount);
+    static BOOL MERGetCameraCount(int &nCameraCount);
     //按序号获取相机序列号,序号从0开始
-    BOOL MerGetCameraSN(int nCameraNumber,char sCameraSN[MaxSNLen]);
+    static BOOL MerGetCameraSN(int nCameraNumber,char sCameraSN[MaxSNLen]);
     //设置剪切框
     BOOL MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight);
 
     void SaveParamToINI();		// 保存相机设置信息
-
+    
     //
     //////////////////////////////////////////////////////////////////////////
     int CamerColorOrGray;

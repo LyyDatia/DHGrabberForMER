@@ -178,29 +178,30 @@ public:
     GX_STATUS SendCommand(GX_FEATURE_ID emFeatureID);
     GX_STATUS GetImage(GX_FRAME_DATA* pFrameData, int32_t nTimeout);
     void      EnableGetImageProcess(bool bEnableGetImageProcess);
-    bool      GetCameraCount(int &nCameraCount);
-    bool      GetCameraSN(int nCameraNumber,char sCameraSN[MaxSNLen]);
+
+    static bool GetCameraCount(int &nCameraCount);
+    static bool GetCameraSN(int nCameraNumber,char sCameraSN[MaxSNLen]);
 
 public:
     //相机参数
-    int64_t m_nMax_Width;         //相机视场宽度
-    int64_t m_nMax_Height;        //相机视场高度
-    int64_t m_nWidth;             //感兴趣区域图像宽度
-    int64_t m_nHeight;            //感兴趣区域图像高度
-    int64_t m_nOffsetX;           //感兴趣区域X偏移量
-    int64_t m_nOffsetY;           //感兴趣区域Y偏移量
-    int m_AcqSpeedLevel;        //采集速度级别
-    int m_nExposureMode;        //曝光模式
-    double m_dExposureTime;     //曝光时间
-    bool m_bExposureAuto;       //自动曝光使能
-    int m_nGain;                //增益值
-    bool m_bGainAuto;           //自动增益使能
-    int m_nBlacklevel;          //黑电平值
-    bool m_bBlacklevelAuto;     //自动黑电平使能
-    double m_dBalanceRatio;     //白平衡系数
-    bool m_bBalanceRatioAuto;   //自动白平衡使能
-    bool m_bTriggerMode;        //外触发模式开关
-    int m_nTriggerActivation;   //触发极性 0上升沿 1下降沿
+    int64_t m_nMax_Width;           //相机视场宽度
+    int64_t m_nMax_Height;          //相机视场高度
+    int64_t m_nWidth;               //感兴趣区域图像宽度
+    int64_t m_nHeight;              //感兴趣区域图像高度
+    int64_t m_nOffsetX;             //感兴趣区域X偏移量
+    int64_t m_nOffsetY;             //感兴趣区域Y偏移量
+    int m_AcqSpeedLevel;            //采集速度级别
+    int m_nExposureMode;            //曝光模式
+    double m_dExposureTime;         //曝光时间
+    bool m_bExposureAuto;           //自动曝光使能
+    int m_nGain;                    //增益值
+    bool m_bGainAuto;               //自动增益使能
+    int m_nBlacklevel;              //黑电平值
+    bool m_bBlacklevelAuto;         //自动黑电平使能
+    double m_dBalanceRatio;         //白平衡系数
+    bool m_bBalanceRatioAuto;       //自动白平衡使能
+    bool m_bTriggerMode;            //外触发模式开关
+    int m_nTriggerActivation;       //触发极性 0上升沿 1下降沿
 
     CSetParamDialog* m_pParamSetDlg;
 
@@ -224,34 +225,42 @@ protected:
     s_DCERRORINFO m_LastErrorInfo;          // 错误信息
 
     // 像素的字节
-    int m_nImageByteCount;
     int m_nFrameCount;    // 采集帧计数
 
 private:
-    GX_DEV_HANDLE m_hDevice;            ///< 设备句柄
-    bool          m_bIsOpen;            ///< 设备打开状态
-    bool          m_bIsSnaping;         ///< 设备采集状态
+    GX_DEV_HANDLE   m_hDevice;              ///< 设备句柄
+    bool            m_bIsOpen;              ///< 设备打开状态
+    bool            m_bIsSnaping;           ///< 设备采集状态
+
+    int64_t         m_nPayLoadSize;         ///< 图像大小
+    int64_t         m_nPixelColorFilter;    ///< 像素格式
+    HANDLE          mxImageSource;          ///< 图片资源锁,用于在修改图片内存对象时互斥
+
+    BYTE*           m_pImgOutBuffer;        ///< 存储输出图像缓冲区的指针
+    int             m_nOutPixelByte;        ///< 输出像素字节
+    int             m_nOutFormat;           ///< 输出图片格式
+
+    BYTE*           m_pImgInBuffer;         ///< 如果需要转化，存储原始图像缓冲区的指针
+    int64_t         m_nImageWidth;          ///< 原始图像宽
+    int64_t         m_nImageHeight;         ///< 原始图像高
+    int             m_nInImageByteCount;    ///<原始图片数据像素字节
+    int64_t         m_nInPixelFormat;       ///< 原始数据格式
+
+
+
     string        m_strBMPFolder;       ///< bmp图片保存目录
     string        m_strAVIFolder;       ///< avi视频保存目录
     bool          m_bShowImg;           ///< 是否显示图像，默认值为true
     bool          m_bSaveBMP;           ///< 是否保存bmp图，默认值为false
     bool          m_bSaveAVI;           ///< 是否保存AVI视频，默认值为false
     BITMAPINFO    *m_pBmpInfo;          ///< 用来显示图像的结构指针
-    BYTE          *m_pImgRGBBuffer;     ///< 存储RGB图像缓冲区的指针
-    BYTE          *m_pImgRaw8Buffer;    ///< 存储Raw8图像缓冲区的指针
     char          *m_chBmpBuf;          ///< BIMTAPINFO 存储缓冲区，m_pBmpInfo即指向此缓冲区
     int           m_nWndWidth;          ///< 图像显示窗口的宽
     int           m_nWndHeight;         ///< 图像显示窗口的高
-    int64_t         m_nImageWidth;          ///< 原始图像宽
-    int64_t         m_nImageHeight;         ///< 原始图像高
-    int64_t         m_nPayLoadSize;         ///< 图像大小
     void          *m_pShowWnd;          ///< 指向图像显示窗口的指针
     void          *m_pDC;               ///< 图像显示窗口指针
     void          *m_pLogWnd;           ///< 指向日志显示窗口的指针
-    int64_t         m_nPixelColorFilter;    ///< 像素格式
-    int64_t         m_nPixelFormat;         ///< 数据格式
     bool          m_bEnableGetImageProcess; ///< 是否允许GetImage接口自行处理获取的数据，进行显示或者保存BMP
-
     //AVI相关数据
     bool        m_bCompressed;  ///< 是否压缩存储AVI
     PAVIFILE    m_pAVIFile;     ///< AVI文件的句柄
@@ -264,7 +273,7 @@ private:
 private:
     GX_STATUS __PrepareForShowImg();
     void __UnPrepareForShowImg();
-    void __ProcessData(BYTE * pImageBuf, BYTE * pImageRGBBuf, int64_t nImageWidth, int64_t nImageHeight);
+    void __ProcessData(BYTE * pImageBuf, BYTE * pImageRGBBuf, int64_t nImageWidth, int64_t nImageHeight, int inFormat, int OutFormat);
     void __SaveBMP(BYTE * pImageBuf, int64_t nImageWidth, int64_t nImageHeight);
     static void __stdcall __OnFrameCallbackFun(GX_FRAME_CALLBACK_PARAM* pFrame);
 
