@@ -72,6 +72,14 @@ BOOL CDHGrabberMER::GetParamInt(GBParamID Param, int &nOutputVal)
 	return(m_pGrabber->GetParamInt(Param, nOutputVal));
 }
 	
+BOOL CDHGrabberMER::SetOutputROI(int nwidth,int nheight, int noffsetX,int noffsetY/*=0*/)
+{
+    ASSERT(m_pGrabber != NULL);
+    BOOL bRet = FALSE;
+    bRet = ((CameraBase *)m_pGrabber)->SetOutputROI(nwidth,nheight, noffsetX, noffsetY);
+    return bRet;
+}
+
 //设置参数
 BOOL CDHGrabberMER::SetParamInt(GBParamID Param, int nInputVal)
 {
@@ -112,15 +120,6 @@ BOOL CDHGrabberMER::MERGetParamInt(MERParamID Param, int &nOutputVal1,int &nOutp
 	bRet = ((CameraBase *)m_pGrabber)->MERGetParamInt(Param, nOutputVal1,nOutputVal2,nOutputVal3);
 
 
-	return bRet;
-}
-
-//设置剪切框
-BOOL CDHGrabberMER::MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight)
-{
-	ASSERT(m_pGrabber != NULL);
-	BOOL bRet = FALSE;
-	bRet = ((CameraBase *)m_pGrabber)->MERSetROI(noffsetX, noffsetY,nwidth,nheight);
 	return bRet;
 }
 

@@ -120,6 +120,8 @@ public:
     BOOL SetParamInt(GBParamID Param, int nReturnVal);    
     //得到通用参数
     BOOL GetParamInt(GBParamID Param, int &nReturnVal);
+    //设置相机裁剪参数
+    virtual BOOL SetOutputROI(int nwidth,int nheight, int noffsetX,int noffsetY);
     //调用参数对话框
     void CallParamDialog();
     // 获得错误信息
@@ -139,8 +141,6 @@ public:
     void SetInitParam();//设置相机使用参数
 
     BOOL MERGetParamString(MERParamID Param, char* sOutputString,int size);//获取字符串参数
-	//设置剪切框
-	BOOL MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight);
 
     GX_STATUS Open(const s_DC_INITSTRUCT* pInitParam);
     bool      IsOpen();         

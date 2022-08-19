@@ -32,16 +32,10 @@
 // 水星相机专有参数
 enum MERParamID
 {
-    MERSnapMode,				// 图像采集模式
     MERGain,					// 增益
-    MERExposure,				// 曝光时间
     MERBlacklevel,			    // 黑电平
     MERBalanceRatio,            // 白平衡
     MERDeviceVersion,           // 版本号
-    MER_INT_WIDTH,              // 输出图片宽
-    MER_INT_HEIGHT,             // 输出图片高
-    MER_INT_OFFSETX,            // 输出图片水平偏移
-    MER_INT_OFFSETY,            // 输出图片竖直偏移
     MERExposurTimeMin,			// 最小曝光时间 (仅查)
 };
 
@@ -74,6 +68,9 @@ public:
     //得到参数
     BOOL GetParamInt(GBParamID Param, int &nOutputVal);
 
+    //设置相机裁剪参数
+    virtual BOOL SetOutputROI(int nwidth,int nheight, int noffsetX,int noffsetY=0);
+
     //调用参数对话框
     void CallParamDialog();
 
@@ -91,8 +88,6 @@ public:
     static BOOL MERGetCameraCount(int &nCameraCount);
     //按序号获取相机序列号,序号从0开始
     static BOOL MerGetCameraSN(int nCameraNumber,char sCameraSN[MaxSNLen]);
-    //设置剪切框
-    BOOL MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight);
 
     void SaveParamToINI();		// 保存相机设置信息
     

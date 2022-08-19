@@ -130,12 +130,58 @@ BOOL CameraBase::Snapshot()
 //设置通用参数
 BOOL CameraBase::SetParamInt(GBParamID Param, int nReturnVal)
 {
-    return TRUE;
+    auto bReturn = TRUE;
+    switch(Param)
+    {
+    case GBExposure:
+        if (SetFloat(GX_FLOAT_EXPOSURE_TIME, (float)nReturnVal) == GX_STATUS_SUCCESS)
+        {
+            m_dExposureTime = nReturnVal;
+        }
+        else
+        {
+            bReturn = FALSE;
+        }
+        break;
+    case GBTriggerMode:
+        if (nReturnVal == 0)
+        {
+            if (SetEnum(GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_OFF) == GX_STATUS_SUCCESS)
+            {
+                m_bTriggerMode = false;
+            }
+            else
+            {
+                bReturn = FALSE;
+            }
+        }
+        else
+        {
+            if (SetEnum(GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_ON) == GX_STATUS_SUCCESS)
+            {
+                m_bTriggerMode = true;
+            }
+            else
+            {
+                bReturn = FALSE;
+            }
+        }
+        break;
+    default:
+        AfxMessageBox("SetParamInt switch(Param)  default:...");
+        m_LastErrorInfo.nErrorCode = DCErrorGetParam;
+        sprintf(m_LastErrorInfo.strErrorDescription, "得到参数出错");
+        sprintf(m_LastErrorInfo.strErrorRemark, "GetParamInt()函数");
+        return FALSE;
+    }
+    return bReturn;
 }
 
 //得到通用参数
 BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
 {
+    __int64 ntemp;
+    double dtemp;
     switch (Param)
     {
     case GBImageWidth:
@@ -151,11 +197,7 @@ BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
         nReturnVal = m_nWidth * m_nHeight * m_nInImageByteCount;
         break;
     case GBImageBufferAddr:
-#ifndef _WIN64
-		nReturnVal = ((int)m_pImgOutBuffer) & 0xFFFFFFFF;
-#else
-		nReturnVal = ((__int64)m_pImgOutBuffer) & 0xFFFFFFFF;
-#endif
+        nReturnVal = ((__int64)m_pImgOutBuffer) & 0xFFFFFFFF;
         break;
 	case GBImageBufferAddr2:
 		{
@@ -177,7 +219,31 @@ BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
 		break;
 	case GBImageOffsetY:
 		nReturnVal = m_nOffsetY;
-		break;
+        break;
+    case GBExposure:
+        {
+            if (GetFloat(GX_FLOAT_EXPOSURE_TIME, &dtemp) == GX_STATUS_SUCCESS)
+            {
+                nReturnVal = (int)dtemp;
+            }
+            else
+            {
+                return FALSE;
+            }
+        }
+        break;
+    case GBTriggerMode:
+        {
+            if (GetEnum(GX_ENUM_TRIGGER_MODE, &ntemp) == GX_STATUS_SUCCESS)
+            {
+                nReturnVal = ntemp;
+            }
+            else
+            {
+                return FALSE;
+            }
+        }
+        break;
     default:
         AfxMessageBox("GetParamInt switch(Param)  default:...");
         m_LastErrorInfo.nErrorCode = DCErrorGetParam;
@@ -228,40 +294,6 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
     BOOL bReturn = TRUE;
     switch (Param)
     {
-    case MERSnapMode:
-        if (nInputVal1 == 0)
-        {
-            if (SetEnum(GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_OFF) == GX_STATUS_SUCCESS)
-            {
-                m_bTriggerMode = false;
-            }
-            else
-            {
-                bReturn = FALSE;
-            }
-        }
-        else
-        {
-            if (SetEnum(GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_ON) == GX_STATUS_SUCCESS)
-            {
-                m_bTriggerMode = true;
-            }
-            else
-            {
-                bReturn = FALSE;
-            }
-        }
-        break;
-    case MERExposure:
-        if (SetFloat(GX_FLOAT_EXPOSURE_TIME, (float)nInputVal1) == GX_STATUS_SUCCESS)
-        {
-            m_dExposureTime = nInputVal1;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
     case MERGain:
         GX_FLOAT_RANGE gainRange;
         GetFloatRange(GX_FLOAT_GAIN, &gainRange);
@@ -292,62 +324,6 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
             bReturn = FALSE;
         }
         break;
-	case MER_INT_WIDTH:
-		{
-			__UnPrepareForShowImg();
-			int tmpWidth = nInputVal1 / 16 * 16 ;
-			if(SetInt(GX_INT_WIDTH,tmpWidth) == GX_STATUS_SUCCESS)
-			{
-				m_nWidth = tmpWidth;
-			}
-			else
-			{
-				bReturn = FALSE;
-			}
-			__PrepareForShowImg();
-		}	
-		break;
-	case MER_INT_HEIGHT:
-		{
-			__UnPrepareForShowImg();
-			int tmpHeight= nInputVal1 / 2 * 2 ;
-			if(SetInt(GX_INT_HEIGHT,tmpHeight) == GX_STATUS_SUCCESS)
-			{
-				m_nHeight = tmpHeight;
-			}
-			else
-			{
-				bReturn = FALSE;
-			}
-			__PrepareForShowImg();
-		}
-		break;
-	case MER_INT_OFFSETX:
-		{
-			int tmpOffsetX = nInputVal1 / 16 * 16 ;
-			if(SetInt(GX_INT_OFFSET_X,tmpOffsetX) == GX_STATUS_SUCCESS)
-			{
-				m_nOffsetX = tmpOffsetX;
-			}
-			else
-			{
-				bReturn = FALSE;
-			}
-		}
-		break;
-	case MER_INT_OFFSETY:
-		{
-			int tmpOffetY= nInputVal1 / 2 * 2 ;
-			if(SetInt(GX_INT_OFFSET_Y,tmpOffetY) == GX_STATUS_SUCCESS)
-			{
-				m_nOffsetY = tmpOffetY;
-			}
-			else
-			{
-				bReturn = FALSE;
-			}
-		}
-		break;
     }
     if (bRet)
     {
@@ -356,8 +332,13 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
     return bReturn;
 }
 
-BOOL CameraBase::MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight)
+BOOL CameraBase::SetOutputROI(int nwidth,int nheight, int noffsetX,int noffsetY)
 {
+    if(noffsetY == m_nOffsetY && noffsetX == m_nOffsetX && nwidth == m_nWidth && nheight == m_nHeight)
+    {
+        return TRUE;
+    }
+
 	bool bRet = false;
 	if (m_bIsSnaping)
 	{
@@ -469,26 +450,6 @@ BOOL CameraBase::MERGetParamInt(MERParamID Param, int& nReturnVal1, int& nReturn
     BOOL bReturn = TRUE;
     switch (Param)
     {
-    case MERSnapMode:
-        if (GetEnum(GX_ENUM_TRIGGER_MODE, &ntemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = ntemp;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
-    case MERExposure:
-        if (GetFloat(GX_FLOAT_EXPOSURE_TIME, &dtemp) == GX_STATUS_SUCCESS)
-        {
-            nReturnVal1 = (int)dtemp;
-        }
-        else
-        {
-            bReturn = FALSE;
-        }
-        break;
     case MERGain:
         if (GetFloat(GX_FLOAT_GAIN, &dtemp) == GX_STATUS_SUCCESS)
         {
@@ -606,13 +567,21 @@ GX_STATUS CameraBase::Open(const s_DC_INITSTRUCT* pInitParam)
 
         if (emStatus != GX_STATUS_SUCCESS)
         {
+            char error[255] = {0};
+            size_t size = 255;
+            GXGetLastError(&emStatus, error, &size);
+            m_LastErrorInfo.nErrorCode = DCErrorInit;
+            sprintf(m_LastErrorInfo.strErrorDescription, "初始化失败");
+            sprintf(m_LastErrorInfo.strErrorRemark, "获取设备列表时出错:%s", error);
             return emStatus;
         }
         if (m_nTotalNum <= 0)
         {
+            m_LastErrorInfo.nErrorCode = DCErrorInit;
+            sprintf(m_LastErrorInfo.strErrorDescription, "初始化失败");
+            sprintf(m_LastErrorInfo.strErrorRemark, "获取设备个数为0");
             return GX_STATUS_ERROR;
         }
-
 
         //根据序列号打开相机
         GX_OPEN_PARAM openParam;
@@ -623,9 +592,12 @@ GX_STATUS CameraBase::Open(const s_DC_INITSTRUCT* pInitParam)
 
         if (emStatus != GX_STATUS_SUCCESS)
         {
-            char error[255];
+            char error[255] = {0};
             size_t size = 255;
             GXGetLastError(&emStatus, error, &size);
+            m_LastErrorInfo.nErrorCode = DCErrorInit;
+            sprintf(m_LastErrorInfo.strErrorDescription, "初始化失败");
+            sprintf(m_LastErrorInfo.strErrorRemark, "打开设备出错:%s", error);
             return emStatus;
         }
         m_bIsOpen = true;
@@ -694,6 +666,18 @@ void CameraBase::InitParamFromINI()
         m_nTriggerActivation = GetPrivateProfileInt("Camera", "TriggerActivation", 0, m_sInitFile);
         m_AcqSpeedLevel = GetPrivateProfileInt("Camera", "AcqSpeedLevel", 0, m_sInitFile);
         m_nOutPixelByte = GetPrivateProfileInt("Camera", "OutPixelByte", 1, m_sInitFile);
+        switch(m_nOutPixelByte)
+        {
+        case 4://不支持RGB32格式，设置RGB32格式则输出RGB24格式
+        case 3:
+            m_nOutFormat = GX_PIXEL_FORMAT_RGB8_PLANAR;
+            m_nOutPixelByte = 3;
+            break;
+        case 1:
+        default:
+            m_nOutFormat = GX_PIXEL_FORMAT_MONO8;
+            break;
+        }
     }
     catch (...)
     {
@@ -1816,9 +1800,6 @@ GX_STATUS CameraBase::__PrepareForShowImg()
         m_nInImageByteCount = 3;
         break;
     }
-    //NOTE:当前不支持格式转换,直接使用水星相机格式输出
-    m_nOutFormat = m_nInPixelFormat;
-    m_nOutPixelByte = m_nInImageByteCount;
 
     //查询当前相机是否支持GX_ENUM_PIXEL_COLOR_FILTER
     bool bIsImplemented = false;
@@ -1961,13 +1942,14 @@ void CameraBase::__ProcessData(BYTE* pImageInBuf, BYTE* pImageOutBuf, int64_t nI
         {
             switch(inFormat)
             {
+            case GX_PIXEL_FORMAT_RGB8_PLANAR:
                 for(int i = 0; i < nImageHeight*nImageWidth;i++)
                 {
                     //伽马近似线性变换 0.299R + 0.587G + 0.114B.
-                    pImageOutBuf[i] = (pImageInBuf[i*3]*0.299+pImageInBuf[i*3+1]*0.587+pImageInBuf[i*3+1]*0.114);
+                    pImageOutBuf[i] = (pImageInBuf[i*3]*0.114+pImageInBuf[i*3+1]*0.587+pImageInBuf[i*3+2]*0.299);
                 }
+                break;
             }
-
         }
         break;
     default:
