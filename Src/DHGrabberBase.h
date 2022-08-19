@@ -46,6 +46,7 @@ enum EGraberType
     EGT_DH_MER,         //公司水星系列相机
     EGT_LCam_DALSA,     //线阵相机DALSA网口相机
     EGT_LCam_DALSA_CL,  //线阵相机DALSA CameraLink相机
+    EGT_LCam_IKap,      //线阵相机IKap网口相机
 };
 
 const int GBMaxFileNameLen = 255;
