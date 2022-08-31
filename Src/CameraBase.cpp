@@ -30,8 +30,8 @@ CameraBase::CameraBase()
     m_bSaveAVI = false;
     m_bEnableGetImageProcess = false;
     m_pBmpInfo = NULL;
-    m_pImgRGBBuffer = NULL;
-    m_pImgRaw8Buffer = NULL;
+    m_pImgOutBuffer = NULL;
+    m_pImgInBuffer = NULL;
     m_strBMPFolder = "C:\\test";
     m_strAVIFolder = "";
     m_pAVIFile = NULL;
@@ -39,7 +39,7 @@ CameraBase::CameraBase()
     m_nTimeFrame = 0;
     m_nTotalNum = 0;
     m_bInitSuccess = false;
-    m_nImageByteCount = 1;
+    m_nInImageByteCount = 1;
     m_nFrameCount = 0;
 
     m_nWidth = 0;
@@ -59,6 +59,7 @@ CameraBase::CameraBase()
     m_nTriggerActivation = 0;
     m_pParamSetDlg = NULL;
     m_AcqSpeedLevel = 0;
+    mxImageSource = ::CreateMutex(NULL, FALSE, NULL);
 }
 
 CameraBase::~CameraBase()
@@ -144,21 +145,21 @@ BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
         nReturnVal = m_nHeight;
         break;
     case GBImagePixelSize:
-        nReturnVal = m_nImageByteCount;
+        nReturnVal = m_nInImageByteCount;
         break;
     case GBImageBufferSize:
-        nReturnVal = m_nWidth * m_nHeight * m_nImageByteCount;
+        nReturnVal = m_nWidth * m_nHeight * m_nInImageByteCount;
         break;
     case GBImageBufferAddr:
 #ifndef _WIN64
-		nReturnVal = ((int)m_pImgRGBBuffer) & 0xFFFFFFFF;
+		nReturnVal = ((int)m_pImgOutBuffer) & 0xFFFFFFFF;
 #else
-		nReturnVal = ((__int64)m_pImgRGBBuffer) & 0xFFFFFFFF;
+		nReturnVal = ((__int64)m_pImgOutBuffer) & 0xFFFFFFFF;
 #endif
         break;
 	case GBImageBufferAddr2:
 		{
-			nReturnVal = ((__int64)m_pImgRGBBuffer) >> 32;
+			nReturnVal = ((__int64)m_pImgOutBuffer) >> 32;
 		}
         break;
 	case GBImageMaxWidth:
@@ -363,6 +364,7 @@ BOOL CameraBase::MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight)
 		StopGrab();
 		bRet = true;
 	}
+    WaitForSingleObject(mxImageSource, INFINITE);
 	BOOL bReturn = TRUE;
 	__UnPrepareForShowImg();
 	if(nwidth < m_nWidth)
@@ -455,6 +457,7 @@ BOOL CameraBase::MERSetROI(int noffsetX,int noffsetY,int nwidth,int nheight)
 	{
 		StartGrab();
 	}
+    ReleaseMutex(mxImageSource);
 	return bReturn;
 }
 
@@ -690,6 +693,7 @@ void CameraBase::InitParamFromINI()
         m_bTriggerMode = GetPrivateProfileInt("Camera", "TriggerMode", 0, m_sInitFile);
         m_nTriggerActivation = GetPrivateProfileInt("Camera", "TriggerActivation", 0, m_sInitFile);
         m_AcqSpeedLevel = GetPrivateProfileInt("Camera", "AcqSpeedLevel", 0, m_sInitFile);
+        m_nOutPixelByte = GetPrivateProfileInt("Camera", "OutPixelByte", 1, m_sInitFile);
     }
     catch (...)
     {
@@ -739,6 +743,8 @@ void CameraBase::SaveParamToINI()
     WritePrivateProfileString("Camera", "TriggerActivation", str, m_sInitFile);
     str.Format("%d", m_AcqSpeedLevel);
     WritePrivateProfileString("Camera", "AcqSpeedLevel", str, m_sInitFile);
+    str.Format("%d", m_nOutPixelByte);
+    WritePrivateProfileString("Camera", "OutPixelByte", str, m_sInitFile);
 }
 
 void CameraBase::SetInitParam()
@@ -1793,23 +1799,27 @@ GX_STATUS CameraBase::__PrepareForShowImg()
         return emStatus;
     }
     //获得图像格式
-    emStatus = GXGetEnum(m_hDevice, GX_ENUM_PIXEL_FORMAT, &m_nPixelFormat);//?????????????????
+    emStatus = GXGetEnum(m_hDevice, GX_ENUM_PIXEL_FORMAT, &m_nInPixelFormat);//?????????????????
 
     if (emStatus != GX_STATUS_SUCCESS)
     {
         return emStatus;
     }
-    switch (m_nPixelFormat)
+    switch (m_nInPixelFormat)
     {
     case GX_PIXEL_FORMAT_MONO8:
     case GX_PIXEL_FORMAT_MONO10:
     case GX_PIXEL_FORMAT_MONO12:
-        m_nImageByteCount = 1;
+        m_nInImageByteCount = 1;
         break;
     default:
-        m_nImageByteCount = 3;
+        m_nInImageByteCount = 3;
         break;
     }
+    //NOTE:当前不支持格式转换,直接使用水星相机格式输出
+    m_nOutFormat = m_nInPixelFormat;
+    m_nOutPixelByte = m_nInImageByteCount;
+
     //查询当前相机是否支持GX_ENUM_PIXEL_COLOR_FILTER
     bool bIsImplemented = false;
     GXIsImplemented(m_hDevice, GX_ENUM_PIXEL_COLOR_FILTER, &bIsImplemented);
@@ -1859,15 +1869,15 @@ GX_STATUS CameraBase::__PrepareForShowImg()
 //----------------------------------------------------------------------------------
 void CameraBase::__UnPrepareForShowImg()
 {
-    if (m_pImgRGBBuffer != NULL)
+    if (m_pImgOutBuffer != NULL)
     {
-        delete[]m_pImgRGBBuffer;
-        m_pImgRGBBuffer = NULL;
+        delete[]m_pImgOutBuffer;
+        m_pImgOutBuffer = NULL;
     }
-    if (m_pImgRaw8Buffer != NULL)
+    if (m_pImgInBuffer != NULL)
     {
-        delete[]m_pImgRaw8Buffer;
-        m_pImgRaw8Buffer = NULL;
+        delete[]m_pImgInBuffer;
+        m_pImgInBuffer = NULL;
     }
 }
 
@@ -1881,70 +1891,90 @@ void CameraBase::__UnPrepareForShowImg()
 \return 无返回值
 */
 //----------------------------------------------------------------------------------
-void CameraBase::__ProcessData(BYTE* pImageBuf, BYTE* pImageRGBBuf, int64_t nImageWidth, int64_t nImageHeight)
+void CameraBase::__ProcessData(BYTE* pImageInBuf, BYTE* pImageOutBuf, int64_t nImageWidth, int64_t nImageHeight, int inFormat, int OutFormat)
 {
-    switch (m_nPixelFormat)
+    switch(OutFormat)
     {
-        //当数据格式为12位时，位数转换为4-11
-    case GX_PIXEL_FORMAT_BAYER_GR12:
-    case GX_PIXEL_FORMAT_BAYER_RG12:
-    case GX_PIXEL_FORMAT_BAYER_GB12:
-    case GX_PIXEL_FORMAT_BAYER_BG12:
-        //将12位格式的图像转换为8位格式
-        DxRaw16toRaw8(pImageBuf, m_pImgRaw8Buffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_4_11);
+    case GX_PIXEL_FORMAT_RGB8_PLANAR://暂时认定此格式为RGB24
+        {
+            switch (inFormat)
+            {
+                //当数据格式为12位时，位数转换为4-11
+            case GX_PIXEL_FORMAT_BAYER_GR12:
+            case GX_PIXEL_FORMAT_BAYER_RG12:
+            case GX_PIXEL_FORMAT_BAYER_GB12:
+            case GX_PIXEL_FORMAT_BAYER_BG12:
+                //将12位格式的图像转换为8位格式
+                DxRaw16toRaw8(pImageInBuf, m_pImgInBuffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_4_11);
 
-        //将Raw8图像转换为RGB图像以供显示
-        DxRaw8toRGB24(m_pImgRaw8Buffer, pImageRGBBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
-            DX_PIXEL_COLOR_FILTER(m_nPixelColorFilter), TRUE);
+                //将Raw8图像转换为RGB图像以供显示
+                DxRaw8toRGB24(m_pImgInBuffer, pImageOutBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
+                    DX_PIXEL_COLOR_FILTER(m_nPixelColorFilter), TRUE);
+                break;
+                //当数据格式为12位时，位数转换为2-9
+            case GX_PIXEL_FORMAT_BAYER_GR10:
+            case GX_PIXEL_FORMAT_BAYER_RG10:
+            case GX_PIXEL_FORMAT_BAYER_GB10:
+            case GX_PIXEL_FORMAT_BAYER_BG10:
+                ////将12位格式的图像转换为8位格式,有效位数2-9
+                DxRaw16toRaw8(pImageInBuf, m_pImgInBuffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_2_9);
+                //将Raw8图像转换为RGB图像以供显示
+                DxRaw8toRGB24(m_pImgInBuffer, pImageOutBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
+                    DX_PIXEL_COLOR_FILTER(m_nPixelColorFilter), TRUE);
+                break;
+
+            case GX_PIXEL_FORMAT_BAYER_GR8:
+            case GX_PIXEL_FORMAT_BAYER_RG8:
+            case GX_PIXEL_FORMAT_BAYER_GB8:
+            case GX_PIXEL_FORMAT_BAYER_BG8:
+                //将Raw8图像转换为RGB图像以供显示
+                DxRaw8toRGB24(pImageInBuf, pImageOutBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
+                    DX_PIXEL_COLOR_FILTER(m_nPixelColorFilter), TRUE);
+                break;
+
+            case GX_PIXEL_FORMAT_MONO12:
+                //将12位格式的图像转换为8位格式
+                DxRaw16toRaw8(pImageInBuf, m_pImgInBuffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_4_11);
+                //将Raw8图像转换为RGB图像以供显示
+                DxRaw8toRGB24(m_pImgInBuffer, pImageOutBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
+                    DX_PIXEL_COLOR_FILTER(NONE), TRUE);
+                break;
+
+            case GX_PIXEL_FORMAT_MONO10:
+                //将10位格式的图像转换为8位格式
+                DxRaw16toRaw8(pImageInBuf, m_pImgInBuffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_4_11);
+                //将Raw8图像转换为RGB图像以供显示
+                DxRaw8toRGB24(m_pImgInBuffer, pImageOutBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
+                    DX_PIXEL_COLOR_FILTER(NONE), TRUE);
+                break;
+
+            case GX_PIXEL_FORMAT_MONO8:
+                //将Raw8图像转换为RGB图像以供显示
+                DxRaw8toRGB24(pImageInBuf, pImageOutBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
+                    DX_PIXEL_COLOR_FILTER(NONE), TRUE);
+            default:
+                break;
+            }
+        }
         break;
-
-        //当数据格式为12位时，位数转换为2-9
-    case GX_PIXEL_FORMAT_BAYER_GR10:
-    case GX_PIXEL_FORMAT_BAYER_RG10:
-    case GX_PIXEL_FORMAT_BAYER_GB10:
-    case GX_PIXEL_FORMAT_BAYER_BG10:
-        ////将12位格式的图像转换为8位格式,有效位数2-9
-        DxRaw16toRaw8(pImageBuf, m_pImgRaw8Buffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_2_9);
-
-        //将Raw8图像转换为RGB图像以供显示
-        DxRaw8toRGB24(m_pImgRaw8Buffer, pImageRGBBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
-            DX_PIXEL_COLOR_FILTER(m_nPixelColorFilter), TRUE);
-        break;
-
-    case GX_PIXEL_FORMAT_BAYER_GR8:
-    case GX_PIXEL_FORMAT_BAYER_RG8:
-    case GX_PIXEL_FORMAT_BAYER_GB8:
-    case GX_PIXEL_FORMAT_BAYER_BG8:
-        //将Raw8图像转换为RGB图像以供显示
-        DxRaw8toRGB24(pImageBuf, pImageRGBBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
-            DX_PIXEL_COLOR_FILTER(m_nPixelColorFilter), TRUE);
-        break;
-
-    case GX_PIXEL_FORMAT_MONO12:
-        //将12位格式的图像转换为8位格式
-        DxRaw16toRaw8(pImageBuf, m_pImgRaw8Buffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_4_11);
-        //将Raw8图像转换为RGB图像以供显示
-        DxRaw8toRGB24(m_pImgRaw8Buffer, pImageRGBBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
-            DX_PIXEL_COLOR_FILTER(NONE), TRUE);
-        break;
-
-    case GX_PIXEL_FORMAT_MONO10:
-        //将10位格式的图像转换为8位格式
-        DxRaw16toRaw8(pImageBuf, m_pImgRaw8Buffer, (VxUint32)nImageWidth, (VxUint32)nImageHeight, DX_BIT_4_11);
-        //将Raw8图像转换为RGB图像以供显示
-        DxRaw8toRGB24(m_pImgRaw8Buffer, pImageRGBBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
-            DX_PIXEL_COLOR_FILTER(NONE), TRUE);
-        break;
-
     case GX_PIXEL_FORMAT_MONO8:
-        //将Raw8图像转换为RGB图像以供显示
-        DxRaw8toRGB24(pImageBuf, pImageRGBBuf, (VxUint32)nImageWidth, (VxUint32)nImageHeight, RAW2RGB_NEIGHBOUR,
-            DX_PIXEL_COLOR_FILTER(NONE), TRUE);
+        {
+            switch(inFormat)
+            {
+                for(int i = 0; i < nImageHeight*nImageWidth;i++)
+                {
+                    //伽马近似线性变换 0.299R + 0.587G + 0.114B.
+                    pImageOutBuf[i] = (pImageInBuf[i*3]*0.299+pImageInBuf[i*3+1]*0.587+pImageInBuf[i*3+1]*0.114);
+                }
+            }
 
-
+        }
+        break;
     default:
         break;
     }
+
+    
 }
 
 
@@ -1960,38 +1990,27 @@ void __stdcall CameraBase::__OnFrameCallbackFun(GX_FRAME_CALLBACK_PARAM* pFrame)
     CameraBase* pCamera = (CameraBase*)(pFrame->pUserParam);
     if (pFrame->status == 0)
     {
+        WaitForSingleObject(pCamera->mxImageSource, INFINITE);
         BOOL bRet = FALSE;
         try
         {
-            //首先将回调中输出的图像数据，处理成RGB数据，以备后面的显示和存储
-            //check image save area and may renew save area
-           /* if (pCamera->m_nImageWidth != pFrame->nWidth || pCamera->m_nImageHeight != pFrame->nHeight)
+            if(pFrame->status == GX_FRAME_STATUS_INCOMPLETE)
             {
-                pCamera->m_nImageWidth = pFrame->nWidth;
-                pCamera->m_nImageHeight = pFrame->nHeight;
-                pCamera->__PrepareImgSaveArea();
-            }*/
-
-            if (pCamera->m_nImageByteCount == 3)
-            {
-                pCamera->__ProcessData((BYTE*)pFrame->pImgBuf, pCamera->m_pImgRGBBuffer, pCamera->m_nImageWidth, pCamera->m_nImageHeight);
-
+                bRet = TRUE;
+                pCamera->m_LastErrorInfo.nErrorCode = DCErrorSendBufAdd;
+                sprintf(pCamera->m_LastErrorInfo.strErrorDescription, "传出数据是残帧");
+                sprintf(pCamera->m_LastErrorInfo.strErrorRemark, "__OnFrameCallbackFun()函数");
             }
-            if (pCamera->m_nImageByteCount == 1)
-            {
-                memcpy(pCamera->m_pImgRGBBuffer, (BYTE*)pFrame->pImgBuf, pCamera->m_nImageWidth * pCamera->m_nImageHeight);
-
+            else if(pCamera->m_nInPixelFormat != pCamera->m_nOutFormat)
+            {//输入输出格式不一致 需要转换
+                //memset(pCamera->m_pImgInBuffer, 0, pCamera->m_nImageWidth* pCamera->m_nImageHeight*pCamera->m_nInImageByteCount);
+                memcpy(pCamera->m_pImgInBuffer, (BYTE*)pFrame->pImgBuf, pCamera->m_nImageWidth* pCamera->m_nImageHeight*pCamera->m_nInImageByteCount);
+                pCamera->__ProcessData(pCamera->m_pImgInBuffer, pCamera->m_pImgOutBuffer, pCamera->m_nImageWidth, pCamera->m_nImageHeight, pCamera->m_nInPixelFormat, pCamera->m_nOutFormat);
             }
-
-            //将数据进行垂直方向镜像
-            //int i=0;
-
-            //	break;for( i=0;i<pCamera->m_nImageHeight;i++)
-
-            //memcpy(pCamera->m_pImgRGBBuffer+pCamera->m_nImageWidth*i,(BYTE*)pFrame->pImgBuf+pCamera->m_nImageWidth*(pCamera->m_nImageHeight-i-1), pCamera->m_nImageWidth);
-            //memcpy(pCamera->m_pImgRGBBuffer,(BYTE*)pFrame->pImgBuf, pCamera->m_nImageWidth*pCamera->m_nImageHeight);
-
-            //pCamera->__SaveBMP(pCamera->m_pImgRGBBuffer, pCamera->m_nImageWidth, pCamera->m_nImageHeight);
+            else
+            {
+                memcpy(pCamera->m_pImgOutBuffer, (BYTE*)pFrame->pImgBuf, pCamera->m_nImageWidth* pCamera->m_nImageHeight*pCamera->m_nInImageByteCount);
+            }
         }
         catch (...)
         {
@@ -2012,40 +2031,42 @@ void __stdcall CameraBase::__OnFrameCallbackFun(GX_FRAME_CALLBACK_PARAM* pFrame)
             sprintf(GrabInfo.strDescription, pCamera->m_LastErrorInfo.strErrorDescription);
         }
         pCamera->m_CallBackFunc(&GrabInfo);
+        ReleaseMutex(pCamera->mxImageSource);
     }
 }
 
 GX_STATUS CameraBase::__PrepareImgSaveArea()
 {
-    if (m_pImgRaw8Buffer != NULL)
+    if (m_pImgInBuffer != NULL)
     {
-        delete[]m_pImgRaw8Buffer;
-        m_pImgRaw8Buffer = NULL;
+        delete[]m_pImgInBuffer;
+        m_pImgInBuffer = NULL;
     }
-    if (m_pImgRGBBuffer != NULL)
+    if (m_pImgOutBuffer != NULL)
     {
-        delete[]m_pImgRGBBuffer;
-        m_pImgRGBBuffer = NULL;
+        delete[]m_pImgOutBuffer;
+        m_pImgOutBuffer = NULL;
     }
 
     //为存储Raw8数据开辟空间
-    m_pImgRaw8Buffer = new BYTE[size_t(m_nImageWidth * m_nImageHeight)];
-    if (m_pImgRaw8Buffer == NULL)
+    m_pImgInBuffer = new BYTE[size_t(m_nImageWidth * m_nImageHeight*m_nInImageByteCount)];
+    if (m_pImgInBuffer == NULL)
     {
         return GX_STATUS_ERROR;
     }
 
     //为存储RGB数据开辟空间
-    m_pImgRGBBuffer = new BYTE[size_t(m_nImageWidth * m_nImageHeight * 3)];
-    if (m_pImgRGBBuffer == NULL)
+    m_pImgOutBuffer = new BYTE[size_t(m_nImageWidth * m_nImageHeight * m_nOutPixelByte)];
+    if (m_pImgOutBuffer == NULL)
     {
-        if (m_pImgRaw8Buffer != NULL)
+        if (m_pImgInBuffer != NULL)
         {
-            delete[]m_pImgRaw8Buffer;
-            m_pImgRaw8Buffer = NULL;
+            delete[]m_pImgInBuffer;
+            m_pImgInBuffer = NULL;
         }
         return GX_STATUS_ERROR;
     }
+    printf("__PrepareImgSaveArea inPtr:%#p outPtr:%#p.\n", m_pImgInBuffer, m_pImgOutBuffer);
     return GX_STATUS_SUCCESS;
 }
 
