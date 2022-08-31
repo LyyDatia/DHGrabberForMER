@@ -197,11 +197,11 @@ BOOL CameraBase::GetParamInt(GBParamID Param, int& nReturnVal)
         nReturnVal = m_nWidth * m_nHeight * m_nInImageByteCount;
         break;
     case GBImageBufferAddr:
-        nReturnVal = ((__int64)m_pImgOutBuffer) & 0xFFFFFFFF;
+        nReturnVal = ((UINT64)m_pImgOutBuffer) & 0xFFFFFFFF;
         break;
 	case GBImageBufferAddr2:
 		{
-			nReturnVal = ((__int64)m_pImgOutBuffer) >> 32;
+			nReturnVal = ((UINT64)m_pImgOutBuffer) >> 32;
 		}
         break;
 	case GBImageMaxWidth:
@@ -1976,7 +1976,14 @@ void __stdcall CameraBase::__OnFrameCallbackFun(GX_FRAME_CALLBACK_PARAM* pFrame)
         BOOL bRet = FALSE;
         try
         {
-            if(pCamera->m_nInPixelFormat != pCamera->m_nOutFormat)
+            if(pFrame->status == GX_FRAME_STATUS_INCOMPLETE)
+            {
+                bRet = TRUE;
+                pCamera->m_LastErrorInfo.nErrorCode = DCErrorSendBufAdd;
+                sprintf(pCamera->m_LastErrorInfo.strErrorDescription, "传出数据是残帧");
+                sprintf(pCamera->m_LastErrorInfo.strErrorRemark, "__OnFrameCallbackFun()函数");
+            }
+            else if(pCamera->m_nInPixelFormat != pCamera->m_nOutFormat)
             {//输入输出格式不一致 需要转换
                 //memset(pCamera->m_pImgInBuffer, 0, pCamera->m_nImageWidth* pCamera->m_nImageHeight*pCamera->m_nInImageByteCount);
                 memcpy(pCamera->m_pImgInBuffer, (BYTE*)pFrame->pImgBuf, pCamera->m_nImageWidth* pCamera->m_nImageHeight*pCamera->m_nInImageByteCount);
@@ -2041,6 +2048,7 @@ GX_STATUS CameraBase::__PrepareImgSaveArea()
         }
         return GX_STATUS_ERROR;
     }
+    printf("__PrepareImgSaveArea inPtr:%#p outPtr:%#p.\n", m_pImgInBuffer, m_pImgOutBuffer);
     return GX_STATUS_SUCCESS;
 }
 

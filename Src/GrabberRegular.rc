@@ -63,8 +63,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,5
- PRODUCTVERSION 1,0,0,5
+ FILEVERSION 1,0,0,6
+ PRODUCTVERSION 1,0,0,6
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -79,13 +79,13 @@ BEGIN
     BEGIN
         BLOCK "080404b0"
         BEGIN
-            VALUE "FileDescription", "MER大恒水星相机封装库-G"
-            VALUE "FileVersion", "1.0.0.5"
+            VALUE "FileDescription", "MER大恒水星相机封装库-G,相机库修改级联更新，版本不向后兼容。"
+            VALUE "FileVersion", "1.0.0.6"
             VALUE "InternalName", "GrabberRegular"
             VALUE "LegalCopyright", "版权所有 (C) 2013-2022"
             VALUE "OriginalFilename", "GrabberRegular.DLL"
             VALUE "ProductName", "GrabberRegular Dynamic Link Library"
-            VALUE "ProductVersion", "1.0.0.5"
+            VALUE "ProductVersion", "1.0.0.6"
         END
     END
     BLOCK "VarFileInfo"
