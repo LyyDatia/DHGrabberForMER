@@ -34,9 +34,11 @@ enum MERParamID
 {
     MERGain,					// 增益
     MERBlacklevel,			    // 黑电平
-    MERBalanceRatio,            // 白平衡
-    MERDeviceVersion,           // 版本号
+    MERBalanceRatio,            // 白平衡 (未使用）
+    MERDeviceVersion,           // 版本号 (仅查)
     MERExposurTimeMin,			// 最小曝光时间 (仅查)
+    MERExposureDelay,           // 曝光延时
+    MERTriggerDelay,            // 触发延时
 };
 
 //采集类

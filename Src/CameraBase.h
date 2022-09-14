@@ -246,6 +246,8 @@ private:
     int             m_nInImageByteCount;    ///<原始图片数据像素字节
     int64_t         m_nInPixelFormat;       ///< 原始数据格式
 
+    bool            m_nMirrorX;             ///< 是否X镜像  
+    bool            m_nMirrorY;             ///< 是否Y镜像
 
 
     string        m_strBMPFolder;       ///< bmp图片保存目录

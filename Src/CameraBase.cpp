@@ -134,7 +134,7 @@ BOOL CameraBase::SetParamInt(GBParamID Param, int nReturnVal)
     switch(Param)
     {
     case GBExposure:
-        if (SetFloat(GX_FLOAT_EXPOSURE_TIME, (float)nReturnVal) == GX_STATUS_SUCCESS)
+        if (SetFloat(GX_FLOAT_EXPOSURE_TIME, (double)nReturnVal) == GX_STATUS_SUCCESS)
         {
             m_dExposureTime = nReturnVal;
         }
@@ -324,6 +324,26 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
             bReturn = FALSE;
         }
         break;
+    case MERTriggerDelay:
+        if (SetFloat(GX_FLOAT_TRIGGER_DELAY, (double)nInputVal1) == GX_STATUS_SUCCESS)
+        {
+            m_nGain = nInputVal1;
+        }
+        else
+        {
+            bReturn = FALSE;
+        }
+        break;
+    case MERExposureDelay:
+        if (SetFloat(GX_FLOAT_EXPOSURE_DELAY, (double)nInputVal1) == GX_STATUS_SUCCESS)
+        {
+            m_nGain = nInputVal1;
+        }
+        else
+        {
+            bReturn = FALSE;
+        }
+        break;
     }
     if (bRet)
     {
@@ -480,6 +500,26 @@ BOOL CameraBase::MERGetParamInt(MERParamID Param, int& nReturnVal1, int& nReturn
             bReturn = FALSE;
         }
         break;
+    case MERExposureDelay:
+        if (GetFloat(GX_FLOAT_EXPOSURE_DELAY, &dtemp) == GX_STATUS_SUCCESS)
+        {
+            nReturnVal1 = dtemp;
+        }
+        else
+        {
+            bReturn = FALSE;
+        }
+        break;
+    case MERTriggerDelay:
+        if (GetFloat(GX_FLOAT_TRIGGER_DELAY, &dtemp) == GX_STATUS_SUCCESS)
+        {
+            nReturnVal1 = dtemp;
+        }
+        else
+        {
+            bReturn = FALSE;
+        }
+        break;
     }
 
     return bReturn;
@@ -614,12 +654,10 @@ GX_STATUS CameraBase::Open(const s_DC_INITSTRUCT* pInitParam)
                 return emStatus;
             }
 
-            if (m_nImageWidth < m_nWidth || m_nImageHeight < m_nHeight)
-            {
-                m_LastErrorInfo.nErrorCode = DCErrorValOverFlow;
-                sprintf(m_LastErrorInfo.strErrorDescription, "宽度或者高度超出最大允许值");
-                sprintf(m_LastErrorInfo.strErrorRemark, "Init()函数中的HVGetDeviceInfo()");
-                return GX_STATUS_ERROR;
+            if (m_nImageWidth != m_nWidth || m_nImageHeight != m_nHeight)
+            {//设置宽高失败，按相机参数设置宽高
+                m_nWidth = m_nImageWidth;
+                m_nHeight = m_nImageHeight;
             }
             m_bInitSuccess = TRUE;
         }
@@ -678,6 +716,9 @@ void CameraBase::InitParamFromINI()
             m_nOutFormat = GX_PIXEL_FORMAT_MONO8;
             break;
         }
+        //增加初始化镜像配置，不支持设置
+        m_nMirrorX = GetPrivateProfileInt("Camera", "MirrorX", 0, m_sInitFile);
+        m_nMirrorY = GetPrivateProfileInt("Camera", "MirrorY", 0, m_sInitFile);
     }
     catch (...)
     {
@@ -739,9 +780,9 @@ void CameraBase::SetInitParam()
     status = SetInt(GX_INT_HEIGHT, m_nHeight);
     status = SetInt(GX_INT_OFFSET_X, m_nOffsetX);
     status = SetInt(GX_INT_OFFSET_Y, m_nOffsetY);
-
-	status = SetBool(GX_BOOL_REVERSE_X, false);
-	status = SetBool(GX_BOOL_REVERSE_Y, true);
+    //TODO:根据配置 是否镜像
+	status = SetBool(GX_BOOL_REVERSE_X, (bool)m_nMirrorX);
+	status = SetBool(GX_BOOL_REVERSE_Y, (bool)!m_nMirrorY);
 
     status = SetEnum(GX_ENUM_ACQUISITION_MODE, GX_ACQ_MODE_CONTINUOUS);
     status = SetEnum(GX_ENUM_GAIN_AUTO, GX_GAIN_AUTO_CONTINUOUS);
