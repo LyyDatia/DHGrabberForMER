@@ -203,6 +203,9 @@ public:
     bool m_bTriggerMode;            //外触发模式开关
     int m_nTriggerActivation;       //触发极性 0上升沿 1下降沿
 
+    double dExposureDelay;
+    double dTriggerDelay;
+
     CSetParamDialog* m_pParamSetDlg;
 
 protected:

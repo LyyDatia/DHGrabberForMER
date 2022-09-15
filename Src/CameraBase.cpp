@@ -292,6 +292,7 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
         bRet = true;
     }
     BOOL bReturn = TRUE;
+    GX_STATUS ret = GX_STATUS_SUCCESS;
     switch (Param)
     {
     case MERGain:
@@ -325,22 +326,26 @@ BOOL CameraBase::MERSetParamInt(MERParamID Param, int nInputVal1, int nInputVal2
         }
         break;
     case MERTriggerDelay:
-        if (SetFloat(GX_FLOAT_TRIGGER_DELAY, (double)nInputVal1) == GX_STATUS_SUCCESS)
+        ret = SetFloat(GX_FLOAT_TRIGGER_DELAY, (double)nInputVal1);
+        if (ret == GX_STATUS_SUCCESS)
         {
-            m_nGain = nInputVal1;
+            dTriggerDelay = nInputVal1;
         }
         else
         {
+            printf("set GX_FLOAT_TRIGGER_DELAY %d failed:%d.\n", nInputVal1, ret);
             bReturn = FALSE;
         }
         break;
     case MERExposureDelay:
-        if (SetFloat(GX_FLOAT_EXPOSURE_DELAY, (double)nInputVal1) == GX_STATUS_SUCCESS)
+        ret = SetFloat(GX_FLOAT_EXPOSURE_DELAY, (double)nInputVal1);
+        if (ret == GX_STATUS_SUCCESS)
         {
-            m_nGain = nInputVal1;
+            dExposureDelay = nInputVal1;
         }
         else
         {
+            printf("set GX_FLOAT_EXPOSURE_DELAY %d failed:%d.\n", nInputVal1, ret);
             bReturn = FALSE;
         }
         break;
