@@ -723,7 +723,7 @@ void CameraBase::InitParamFromINI()
         }
         //增加初始化镜像配置，不支持设置
         m_nMirrorX = GetPrivateProfileInt("Camera", "MirrorX", 0, m_sInitFile);
-        m_nMirrorY = GetPrivateProfileInt("Camera", "MirrorY", 0, m_sInitFile);
+        m_nMirrorY = GetPrivateProfileInt("Camera", "MirrorY", 1, m_sInitFile);
     }
     catch (...)
     {
@@ -787,7 +787,7 @@ void CameraBase::SetInitParam()
     status = SetInt(GX_INT_OFFSET_Y, m_nOffsetY);
     //TODO:根据配置 是否镜像
 	status = SetBool(GX_BOOL_REVERSE_X, (bool)m_nMirrorX);
-	status = SetBool(GX_BOOL_REVERSE_Y, (bool)!m_nMirrorY);
+	status = SetBool(GX_BOOL_REVERSE_Y, (bool)m_nMirrorY);
 
     status = SetEnum(GX_ENUM_ACQUISITION_MODE, GX_ACQ_MODE_CONTINUOUS);
     status = SetEnum(GX_ENUM_GAIN_AUTO, GX_GAIN_AUTO_CONTINUOUS);
